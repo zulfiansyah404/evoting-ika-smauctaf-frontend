@@ -2,9 +2,23 @@
 
 import { useState, useEffect } from 'react'
 
+export interface CountdownProps {
+  target: string | number | Date
+  prefix?: string
+  endedText?: string
+  variant?: 'inline' | 'blocks'
+  className?: string
+}
+
 // Live countdown toward a target ISO datetime.
 // variant: 'inline' (compact text) | 'blocks' (segmented boxes)
-export default function Countdown({ target, prefix = '', endedText = 'Waktu telah berakhir', variant = 'inline', className = '' }) {
+export default function Countdown({
+  target,
+  prefix = '',
+  endedText = 'Waktu telah berakhir',
+  variant = 'inline',
+  className = '',
+}: CountdownProps) {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
@@ -44,7 +58,7 @@ export default function Countdown({ target, prefix = '', endedText = 'Waktu tela
     )
   }
 
-  const pad = (n) => String(n).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
   const text = d > 0 ? `${d}h ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`
   return (
     <span className={`tabular-nums ${className}`}>{prefix}{text}</span>

@@ -6,7 +6,9 @@ import { apiFetch, fmtDate, electionStatus, STATUS_LABEL, getSession, clearToken
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Vote, ShieldCheck, Users, ScrollText, Target, Flag, ArrowRight, CalendarClock, Menu, X, Timer } from 'lucide-react'
 import Countdown from '@/components/Countdown'
@@ -17,7 +19,9 @@ const UNITY = 'https://images.unsplash.com/photo-1785970033901-514a8d8bad29?crop
 const statusStyle = {
   active: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   upcoming: 'bg-amber-100 text-amber-800 border-amber-200',
-  ended: 'bg-slate-100 text-slate-600 border-slate-200',
+  ended: 'bg-rose-100 text-rose-800 border-rose-200',
+  complete: 'bg-blue-100 text-blue-800 border-blue-200',
+  inactive: 'bg-slate-100 text-slate-600 border-slate-200',
   unknown: 'bg-slate-100 text-slate-600 border-slate-200',
 }
 
@@ -26,11 +30,11 @@ function initialsColor(str = '') {
 }
 
 export default function LandingPage() {
-  const [elections, setElections] = useState([])
-  const [candidates, setCandidates] = useState([])
+  const [elections, setElections] = useState<any[]>([])
+  const [candidates, setCandidates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [detail, setDetail] = useState(null)
-  const [session, setSession] = useState(null)
+  const [detail, setDetail] = useState<any>(null)
+  const [session, setSession] = useState<any>(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -294,44 +298,53 @@ export default function LandingPage() {
 
       {/* CANDIDATE DETAIL DIALOG */}
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-lg">
-          {detail && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-navy text-gold flex items-center justify-center font-serif text-xl border-2 border-gold/40">
-                    {(detail.initials || detail.user_name || '?').toString().slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <DialogTitle className="font-serif text-xl text-navy text-left">{detail.user_name || detail.initials}</DialogTitle>
-                    <div className="text-sm text-muted-foreground text-left">
-                      {detail.batch_name ? `Angkatan ${detail.batch_name}` : ''}{detail.election_name ? ` \u00b7 ${detail.election_name}` : ''}
-                    </div>
-                  </div>
-                </div>
-              </DialogHeader>
-              <div className="space-y-5 mt-2 max-h-[55vh] overflow-y-auto pr-1">
-                <div>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-navy mb-1.5"><Target className="h-4 w-4 text-gold-dark" /> Visi</div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">{detail.vision || '-'}</p>
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-navy mb-1.5"><Flag className="h-4 w-4 text-gold-dark" /> Misi</div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">{detail.mission || '-'}</p>
-                </div>
+        {detail && (
+          <DialogContent className="max-w-lg">
+            <DialogHeader className="flex-row items-center gap-4 space-y-0 text-left">
+              <div className="h-16 w-16 shrink-0 rounded-full bg-navy text-gold flex items-center justify-center font-serif text-xl border-2 border-gold/40">
+                {(detail.initials || detail.user_name || '?').toString().slice(0, 2).toUpperCase()}
               </div>
-              <Link href="/login" className="mt-2">
-                <Button className="w-full bg-navy hover:bg-navy-light text-white">Masuk untuk Memilih Kandidat Ini</Button>
+              <div>
+                <DialogTitle className="font-serif text-xl text-navy">
+                  {detail.user_name || detail.initials}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
+                  {detail.batch_name ? `Angkatan ${detail.batch_name}` : ''}
+                  {detail.election_name ? ` \u00b7 ${detail.election_name}` : ''}
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-5 my-2 max-h-[55vh] overflow-y-auto pr-1">
+              <div>
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-navy mb-1.5">
+                  <Target className="h-4 w-4 text-gold-dark" /> Visi
+                </div>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">{detail.vision || '-'}</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-navy mb-1.5">
+                  <Flag className="h-4 w-4 text-gold-dark" /> Misi
+                </div>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">{detail.mission || '-'}</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Link href="/login" className="w-full">
+                <Button className="w-full bg-navy hover:bg-navy-light text-white">
+                  Masuk untuk Memilih Kandidat Ini
+                </Button>
               </Link>
-            </>
-          )}
-        </DialogContent>
+            </DialogFooter>
+          </DialogContent>
+        )}
       </Dialog>
     </div>
   )
 }
 
-function SectionHead({ eyebrow, title, subtitle }) {
+function SectionHead({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
   return (
     <div className="mb-12 max-w-2xl">
       <div className="text-xs uppercase tracking-[0.25em] text-gold-dark font-semibold mb-3">{eyebrow}</div>
@@ -341,7 +354,7 @@ function SectionHead({ eyebrow, title, subtitle }) {
   )
 }
 
-function EmptyState({ icon: Icon, text }) {
+function EmptyState({ icon: Icon, text }: { icon: any; text: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card/50 py-16 px-6 text-center">
       <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-secondary flex items-center justify-center">

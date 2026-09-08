@@ -5,18 +5,39 @@ const BE = '/api/be'
 const TOKEN_KEY = 'evoting_token'
 const RECEIPT_KEY = 'evoting_receipts'
 
-export function getToken() {
+export interface DecodedToken {
+  user_id?: string | number
+  role?: string
+  exp?: number
+  [key: string]: any
+}
+
+export interface UserSession {
+  token: string
+  role?: string
+  userId?: string | number
+}
+
+export interface ApiFetchOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  body?: any
+  auth?: boolean
+}
+
+export function getToken(): string | null {
   if (typeof window === 'undefined') return null
   return localStorage.getItem(TOKEN_KEY)
 }
-export function setToken(t) {
+
+export function setToken(t: string): void {
   if (typeof window !== 'undefined') localStorage.setItem(TOKEN_KEY, t)
 }
-export function clearToken() {
+
+export function clearToken(): void {
   if (typeof window !== 'undefined') localStorage.removeItem(TOKEN_KEY)
 }
 
-export function decodeToken(token) {
+export function decodeToken(token: string): DecodedToken | null {
   try {
     const payload = token.split('.')[1]
     const json = JSON.parse(
@@ -33,7 +54,7 @@ export function decodeToken(token) {
   }
 }
 
-export function getSession() {
+export function getSession(): UserSession | null {
   const t = getToken()
   if (!t) return null
   const d = decodeToken(t)
@@ -45,8 +66,11 @@ export function getSession() {
   return { token: t, role: d.role, userId: d.user_id }
 }
 
-export async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = {}
+export async function apiFetch<T = any>(
+  path: string,
+  { method = 'GET', body, auth = true }: ApiFetchOptions = {}
+): Promise<T> {
+  const headers: Record<string, string> = {}
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (auth) {
     const t = getToken()
@@ -57,33 +81,34 @@ export async function apiFetch(path, { method = 'GET', body, auth = true } = {})
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
-  let data = null
+  let data: any = null
   try {
     data = await res.json()
   } catch (e) {}
   if (!res.ok || (data && data.status === 'error')) {
     const msg = (data && data.message) || `Terjadi kesalahan (${res.status})`
-    const err = new Error(msg)
+    const err: any = new Error(msg)
     err.status = res.status
     err.payload = data
     throw err
   }
-  return data
+  return data as T
 }
 
 // Receipt local storage (per election) so voter can see their receipt again
-export function saveReceipt(electionId, receipt) {
+export function saveReceipt(electionId: string | number, receipt: any): void {
   if (typeof window === 'undefined') return
   const all = JSON.parse(localStorage.getItem(RECEIPT_KEY) || '{}')
   all[electionId] = receipt
   localStorage.setItem(RECEIPT_KEY, JSON.stringify(all))
 }
-export function getReceipts() {
+
+export function getReceipts(): Record<string, any> {
   if (typeof window === 'undefined') return {}
   return JSON.parse(localStorage.getItem(RECEIPT_KEY) || '{}')
 }
 
-export function fmtDate(s) {
+export function fmtDate(s?: string | null | Date): string {
   if (!s) return '-'
   try {
     return new Date(s).toLocaleString('id-ID', {
@@ -94,11 +119,11 @@ export function fmtDate(s) {
       minute: '2-digit',
     })
   } catch (e) {
-    return s
+    return String(s)
   }
 }
 
-export function toInputDate(s) {
+export function toInputDate(s?: string | null | Date): string {
   if (!s) return ''
   try {
     const d = new Date(s)
@@ -110,8 +135,11 @@ export function toInputDate(s) {
   }
 }
 
-export function electionStatus(e) {
+export function electionStatus(e: any): 'active' | 'upcoming' | 'ended' | 'complete' | 'inactive' | 'unknown' {
   if (!e) return 'unknown'
+  if (e.status === 'inactive') return 'inactive'
+  if (e.status === 'complete') return 'complete'
+
   const now = Date.now()
   const s = new Date(e.start_time).getTime()
   const en = new Date(e.end_time).getTime()
@@ -121,9 +149,11 @@ export function electionStatus(e) {
   return 'active'
 }
 
-export const STATUS_LABEL = {
+export const STATUS_LABEL: Record<string, string> = {
   active: 'Sedang Berlangsung',
   upcoming: 'Akan Datang',
-  ended: 'Telah Selesai',
+  ended: 'Waktu Berakhir',
+  complete: 'Telah Selesai',
+  inactive: 'Draf (Belum Publik)',
   unknown: 'Tidak Diketahui',
 }

@@ -24,7 +24,9 @@ import Countdown from '@/components/Countdown'
 const statusStyle = {
   active: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   upcoming: 'bg-amber-100 text-amber-800 border-amber-200',
-  ended: 'bg-slate-100 text-slate-600 border-slate-200',
+  ended: 'bg-rose-100 text-rose-800 border-rose-200',
+  complete: 'bg-blue-100 text-blue-800 border-blue-200',
+  inactive: 'bg-slate-100 text-slate-600 border-slate-200',
   unknown: 'bg-slate-100 text-slate-600 border-slate-200',
 }
 
@@ -258,7 +260,7 @@ export default function VotePage() {
                           </Button>
                         ) : (
                           <Button disabled variant="secondary" className="w-full">
-                            {st === 'upcoming' ? 'Belum Dibuka' : 'Telah Ditutup'}
+                            {st === 'upcoming' ? 'Belum Dibuka' : st === 'complete' ? 'Pemilihan Selesai' : 'Waktu Habis (Ditutup)'}
                           </Button>
                         )}
                         {voted && (
