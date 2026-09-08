@@ -125,12 +125,21 @@ export default function AdminUsersPage() {
     e.preventDefault()
     if (!modal) return
     const { mode, values } = modal
+
+    const emailClean = (values.email || '').trim()
+    const numberClean = (values.number || '').trim()
+
+    if (!emailClean && !numberClean) {
+      toast.error('Minimal satu dari Email atau Nomor Telepon / HP harus diisi')
+      return
+    }
+
     setSaving(true)
     try {
       const payload: any = {
-        name: values.name,
-        email: values.email,
-        number: values.number || '',
+        name: values.name.trim(),
+        email: emailClean || null,
+        number: numberClean || null,
         role: values.role || 'voter',
         id_batch: values.role === 'admin' ? 0 : (values.id_batch ? Number(values.id_batch) : 0),
       }
@@ -265,7 +274,7 @@ export default function AdminUsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Email / No. HP</TableHead>
                   <TableHead>Angkatan</TableHead>
                   <TableHead>Peran</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
@@ -285,7 +294,11 @@ export default function AdminUsersPage() {
                   filteredUsers.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium text-navy">{u.name || '-'}</TableCell>
-                      <TableCell className="text-sm">{u.email}</TableCell>
+                      <TableCell className="text-sm">
+                        {u.email && <div>{u.email}</div>}
+                        {u.number && <div className="text-xs text-muted-foreground font-mono">{u.number}</div>}
+                        {!u.email && !u.number && <span className="text-muted-foreground">-</span>}
+                      </TableCell>
                       <TableCell className="text-sm">{batchName(u.id_batch)}</TableCell>
                       <TableCell>
                         <Badge
@@ -302,7 +315,7 @@ export default function AdminUsersPage() {
                       <TableCell>
                         <RowActions
                           onEdit={() => openEdit(u)}
-                          onDelete={() => setConfirmDel({ id: u.id, label: u.name || u.email })}
+                          onDelete={() => setConfirmDel({ id: u.id, label: u.name || u.email || u.number })}
                         />
                       </TableCell>
                     </TableRow>
@@ -322,14 +335,16 @@ export default function AdminUsersPage() {
 
       {/* MODAL TAMBAH / UBAH */}
       <Dialog open={!!modal} onOpenChange={(o) => !saving && !o && setModal(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           {modal && (
             <form onSubmit={submitModal}>
               <DialogHeader>
                 <DialogTitle className="font-serif text-xl text-navy">
                   {modal.mode === 'create' ? 'Tambah Pengguna' : 'Ubah Pengguna'}
                 </DialogTitle>
-                <DialogDescription>Lengkapi rincian profil akun di bawah ini.</DialogDescription>
+                <DialogDescription>
+                  Lengkapi rincian profil akun di bawah ini. Pengguna dapat memiliki Email, Nomor Telepon/HP, atau keduanya.
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
@@ -347,8 +362,15 @@ export default function AdminUsersPage() {
                     type="email"
                     value={modal.values.email}
                     onChange={(e) => setVal('email', e.target.value)}
-                    required
-                    placeholder="nama@email.com"
+                    placeholder="nama@email.com (opsional jika No. HP diisi)"
+                  />
+                </Field>
+
+                <Field label="Nomor Telepon / HP">
+                  <Input
+                    value={modal.values.number}
+                    onChange={(e) => setVal('number', e.target.value)}
+                    placeholder="08xxxxxxxxxx (opsional jika Email diisi)"
                   />
                 </Field>
 
@@ -393,14 +415,6 @@ export default function AdminUsersPage() {
                     onChange={(e) => setVal('password', e.target.value)}
                     required={modal.mode === 'create'}
                     placeholder={modal.mode === 'create' ? 'Kata sandi awal' : 'Kosongkan jika tidak ingin mengubah'}
-                  />
-                </Field>
-
-                <Field label="Nomor HP / NIS">
-                  <Input
-                    value={modal.values.number}
-                    onChange={(e) => setVal('number', e.target.value)}
-                    placeholder="08xxxx"
                   />
                 </Field>
               </div>

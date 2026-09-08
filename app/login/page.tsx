@@ -12,7 +12,7 @@ import { Loader2, ArrowLeft, ShieldCheck } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -21,18 +21,22 @@ export default function LoginPage() {
     if (s) router.replace(s.role === 'admin' ? '/admin' : '/vote')
   }, [router])
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await apiFetch('/login', { method: 'POST', auth: false, body: { email, password } })
+      const res = await apiFetch('/login', {
+        method: 'POST',
+        auth: false,
+        body: { identifier: identifier.trim(), password },
+      })
       const token = res?.data?.token
       if (!token) throw new Error('Token tidak ditemukan pada respons')
       setToken(token)
       const d = decodeToken(token)
       toast.success('Login berhasil')
       router.replace(d?.role === 'admin' ? '/admin' : '/vote')
-    } catch (err) {
+    } catch (err: any) {
       toast.error(err.message || 'Login gagal')
     } finally {
       setLoading(false)
@@ -69,11 +73,18 @@ export default function LoginPage() {
             </Link>
           </div>
           <h2 className="font-serif text-3xl mb-1">Masuk</h2>
-          <p className="text-muted-foreground mb-8">Gunakan email dan kata sandi terdaftar Anda.</p>
+          <p className="text-muted-foreground mb-8">Gunakan email atau nomor telepon dan kata sandi terdaftar Anda.</p>
           <form onSubmit={submit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="nama@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Label htmlFor="identifier">Email atau Nomor Telepon / HP</Label>
+              <Input
+                id="identifier"
+                type="text"
+                placeholder="nama@email.com atau 08xxxxxxxxxx"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Kata Sandi</Label>

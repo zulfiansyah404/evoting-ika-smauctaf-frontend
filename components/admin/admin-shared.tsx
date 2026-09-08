@@ -166,9 +166,15 @@ export const IMPORT_CONFIG: Record<string, any> = {
   user: {
     title: 'Impor Pengguna (CSV)',
     cols: ['name', 'email', 'password', 'id_batch', 'number'],
-    template: 'name,email,password,id_batch,number\nBudi Santoso,budi@email.com,password123,9,081200000010\nSiti Aminah,siti@email.com,password123,10,081200000011',
-    map: (r: any) => ({ name: r.name, email: r.email, password: r.password, id_batch: Number(r.id_batch) || 0, number: String(r.number || '') }),
-    valid: (o: any) => o.name && o.email && o.password,
+    template: 'name,email,password,id_batch,number\nBudi Santoso,budi@email.com,password123,9,081200000010\nSiti Aminah,siti@email.com,password123,10,\nAgus Pratama,,password123,11,081200000012',
+    map: (r: any) => ({
+      name: (r.name || '').trim(),
+      email: (r.email || '').trim(),
+      password: r.password,
+      id_batch: Number(r.id_batch) || 0,
+      number: String(r.number || '').trim(),
+    }),
+    valid: (o: any) => o.name && (o.email || o.number) && o.password,
   },
   batch: {
     title: 'Impor Angkatan (CSV)',
