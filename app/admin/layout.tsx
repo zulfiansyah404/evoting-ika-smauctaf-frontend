@@ -24,7 +24,7 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [session, setSession] = useState<{ token: string; role: string; userId?: any } | null>(null)
+  const [session, setSession] = useState<UserSession | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -102,8 +102,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
             <h1 className="font-serif text-xl text-navy">{currentNav?.label || 'Dashboard Admin'}</h1>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-gold-dark" /> Administrator
+          <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-2 text-navy font-medium">
+              <ShieldCheck className="h-4 w-4 text-gold-dark" />
+              <span>{session.name || 'Administrator'}</span>
+            </div>
+            <span className="text-[11px] bg-gold/15 text-gold-dark px-2 py-0.5 rounded border border-gold/30 font-medium">Admin</span>
           </div>
         </header>
 

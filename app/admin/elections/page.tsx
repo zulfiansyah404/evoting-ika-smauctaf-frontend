@@ -111,16 +111,52 @@ export default function AdminElectionsPage() {
     e.preventDefault()
     if (!modal) return
     const { mode, values } = modal
+
+    const startMs = new Date(values.start_time).getTime()
+    const endMs = new Date(values.end_time).getTime()
+    const now = Date.now()
+
+    if (isNaN(startMs) || isNaN(endMs)) {
+      toast.error('Waktu mulai dan waktu selesai wajib diisi dengan benar')
+      return
+    }
+
+    if (endMs <= startMs) {
+      toast.error('Waktu selesai pemilihan harus setelah waktu mulai')
+      return
+    }
+
+    if (mode === 'create') {
+      if (endMs < now) {
+        toast.error('Waktu selesai pemilihan tidak boleh di masa lalu')
+        return
+      }
+      if (startMs < now - 5 * 60 * 1000) {
+        toast.error('Waktu mulai pemilihan tidak boleh di masa lalu')
+        return
+      }
+    } else if (values.status === 'inactive') {
+      if (endMs < now) {
+        toast.error('Waktu selesai pemilihan tidak boleh di masa lalu')
+        return
+      }
+      if (startMs < now - 5 * 60 * 1000) {
+        toast.error('Waktu mulai pemilihan tidak boleh di masa lalu')
+        return
+      }
+    } else if (values.status === 'active' && endMs < now) {
+      toast.error('Waktu selesai pemilihan yang aktif tidak boleh di masa lalu')
+      return
+    }
+
     setSaving(true)
     try {
       const payload: any = {
         name: values.name,
         description: values.description || '',
+        start_time: new Date(values.start_time).toISOString(),
         end_time: new Date(values.end_time).toISOString(),
         status: values.status || 'inactive',
-      }
-      if (mode === 'create' || values.start_time) {
-        payload.start_time = new Date(values.start_time).toISOString()
       }
 
       if (mode === 'create') {

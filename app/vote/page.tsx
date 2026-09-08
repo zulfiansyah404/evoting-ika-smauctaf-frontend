@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   apiFetch, getSession, clearToken, fmtDate, electionStatus, STATUS_LABEL,
-  saveReceipt, getReceipts,
+  saveReceipt, getReceipts, UserSession,
 } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   Vote, LogOut, Target, Flag, CheckCircle2, Loader2, ShieldCheck, Copy,
-  CalendarClock, ArrowLeft, CheckCircle, Download, Timer,
+  CalendarClock, ArrowLeft, CheckCircle, Download, Timer, GraduationCap,
 } from 'lucide-react'
 import Countdown from '@/components/Countdown'
 
@@ -32,16 +32,16 @@ const statusStyle = {
 
 export default function VotePage() {
   const router = useRouter()
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState<UserSession | null>(null)
   const [loading, setLoading] = useState(true)
-  const [elections, setElections] = useState([])
-  const [candidates, setCandidates] = useState([])
-  const [selectedElection, setSelectedElection] = useState(null)
-  const [selectedCandidate, setSelectedCandidate] = useState(null)
+  const [elections, setElections] = useState<any[]>([])
+  const [candidates, setCandidates] = useState<any[]>([])
+  const [selectedElection, setSelectedElection] = useState<any>(null)
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [receipts, setReceipts] = useState({})
-  const [successReceipt, setSuccessReceipt] = useState(null)
+  const [receipts, setReceipts] = useState<Record<string, any>>({})
+  const [successReceipt, setSuccessReceipt] = useState<any>(null)
 
   useEffect(() => {
     const s = getSession()
@@ -63,7 +63,7 @@ export default function VotePage() {
       ])
       setElections(Array.isArray(el?.data) ? el.data : [])
       setCandidates(Array.isArray(ca?.data) ? ca.data : [])
-    } catch (e) {
+    } catch (e: any) {
       toast.error(e.message || 'Gagal memuat data')
     } finally {
       setLoading(false)
@@ -75,10 +75,10 @@ export default function VotePage() {
     router.replace('/login')
   }
 
-  const candidatesFor = (el) =>
+  const candidatesFor = (el: any) =>
     candidates.filter((c) => (c.election_name || '').trim() === (el?.name || '').trim())
 
-  const openConfirm = (cand) => {
+  const openConfirm = (cand: any) => {
     setSelectedCandidate(cand)
     setConfirmOpen(true)
   }
@@ -97,27 +97,27 @@ export default function VotePage() {
       setConfirmOpen(false)
       setSuccessReceipt(receipt)
       toast.success('Suara Anda berhasil direkam')
-    } catch (e) {
+    } catch (e: any) {
       toast.error(e.message || 'Gagal mengirim suara')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const copyReceipt = (code) => {
+  const copyReceipt = (code: string) => {
     navigator.clipboard?.writeText(code)
     toast.success('Kode receipt disalin')
   }
 
-  const generateCertificate = async (code) => {
+  const generateCertificate = async (code: string) => {
     try {
       const { jsPDF } = await import('jspdf')
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
       const W = doc.internal.pageSize.getWidth()
       const H = doc.internal.pageSize.getHeight()
-      const navy = [22, 30, 46]
-      const gold = [201, 168, 106]
-      const gray = [120, 120, 130]
+      const navy: [number, number, number] = [22, 30, 46]
+      const gold: [number, number, number] = [201, 168, 106]
+      const gray: [number, number, number] = [120, 120, 130]
 
       // Background + borders
       doc.setFillColor(252, 250, 246)
@@ -187,7 +187,7 @@ export default function VotePage() {
 
       doc.save(`Sertifikat-Suara-${code}.pdf`)
       toast.success('Sertifikat PDF berhasil diunduh')
-    } catch (e) {
+    } catch (e: any) {
       toast.error('Gagal membuat sertifikat: ' + e.message)
     }
   }
@@ -204,8 +204,18 @@ export default function VotePage() {
             <span className="hidden sm:inline-block h-5 w-px bg-white/20" />
             <span className="hidden sm:inline-block text-xs uppercase tracking-wider text-gold/90 font-medium">Bilik Suara</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-sm text-white/70">Pemilih Terverifikasi</span>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <div className="text-sm font-semibold text-white leading-tight">{session.name || 'Pemilih'}</div>
+              {session.batchName ? (
+                <div className="text-[11px] text-gold/90 flex items-center justify-end gap-1 font-medium mt-0.5">
+                  <GraduationCap className="h-3 w-3" />
+                  <span>{session.batchNumber ? `Angkatan ${session.batchNumber} - ` : ''}{session.batchName}{session.batchBranch ? ` (${session.batchBranch})` : ''}</span>
+                </div>
+              ) : (
+                <div className="text-[11px] text-white/60">Pemilih Terverifikasi</div>
+              )}
+            </div>
             <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10" onClick={logout}>
               <LogOut className="h-4 w-4 mr-2" /> Keluar
             </Button>
@@ -217,8 +227,18 @@ export default function VotePage() {
         {!selectedElection ? (
           <>
             <div className="mb-8">
-              <h1 className="font-serif text-3xl text-navy mb-2">Selamat Datang, Pemilih.</h1>
-              <p className="text-muted-foreground">Pilih pemilihan di bawah ini untuk memberikan suara Anda.</p>
+              <h1 className="font-serif text-3xl text-navy mb-2">
+                Selamat Datang, {session.name || 'Pemilih'}.
+              </h1>
+              <p className="text-muted-foreground">
+                {session.batchName ? (
+                  <span>
+                    Anda terdaftar sebagai alumni <strong className="text-navy">Angkatan {session.batchNumber ? `${session.batchNumber} - ` : ''}{session.batchName}{session.batchBranch ? ` (${session.batchBranch})` : ''}</strong>. Silakan pilih pemilihan di bawah ini untuk memberikan suara Anda.
+                  </span>
+                ) : (
+                  <span>Pilih pemilihan di bawah ini untuk memberikan suara Anda.</span>
+                )}
+              </p>
             </div>
             {loading ? (
               <div className="grid md:grid-cols-2 gap-6"><Skeleton className="h-44" /><Skeleton className="h-44" /></div>

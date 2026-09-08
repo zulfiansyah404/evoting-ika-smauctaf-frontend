@@ -8,6 +8,11 @@ const RECEIPT_KEY = 'evoting_receipts'
 export interface DecodedToken {
   user_id?: string | number
   role?: string
+  name?: string
+  batch_id?: string | number
+  batch_name?: string
+  batch_number?: number
+  batch_branch?: string
   exp?: number
   [key: string]: any
 }
@@ -16,6 +21,11 @@ export interface UserSession {
   token: string
   role?: string
   userId?: string | number
+  name?: string
+  batchId?: string | number
+  batchName?: string
+  batchNumber?: number
+  batchBranch?: string
 }
 
 export interface ApiFetchOptions {
@@ -63,7 +73,16 @@ export function getSession(): UserSession | null {
     clearToken()
     return null
   }
-  return { token: t, role: d.role, userId: d.user_id }
+  return {
+    token: t,
+    role: d.role,
+    userId: d.user_id,
+    name: d.name,
+    batchId: d.batch_id,
+    batchName: d.batch_name,
+    batchNumber: d.batch_number,
+    batchBranch: d.batch_branch,
+  }
 }
 
 export async function apiFetch<T = any>(
