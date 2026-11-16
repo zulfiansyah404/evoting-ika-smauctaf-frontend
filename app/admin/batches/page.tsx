@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,17 +18,27 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Loader2, Search, X } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   TableToolbar, RowActions, EmptyRow, Field, ConfirmDeleteDialog, ImportDialog,
+  BulkActionToolbar, ConfirmBulkDeleteDialog,
 } from '@/components/admin/admin-shared'
+import { TablePagination } from '@/components/admin/table-pagination'
 
 export default function AdminBatchesPage() {
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [loadingBatches, setLoadingBatches] = useState(false)
   const [batches, setBatches] = useState<any[]>([])
+  const [branchOptions, setBranchOptions] = useState<string[]>(['Deli Serdang', 'Sukoharjo'])
 
   // Filter states
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 400)
   const [branchFilter, setBranchFilter] = useState('ALL')
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 })
 
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; values: any } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -35,55 +46,71 @@ export default function AdminBatchesPage() {
   const [deleting, setDeleting] = useState(false)
   const [showImport, setShowImport] = useState(false)
 
+  // Bulk Selection States
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showBulkDel, setShowBulkDel] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
+  // Load all branches for dropdown options on mount
   useEffect(() => {
-    loadData()
+    apiFetch('/admin/batches?all=true')
+      .then((res) => {
+        if (Array.isArray(res?.data)) {
+          const set = new Set<string>(['Deli Serdang', 'Sukoharjo'])
+          res.data.forEach((b: any) => {
+            if (b.branch) set.add(b.branch)
+          })
+          setBranchOptions(Array.from(set))
+        }
+      })
+      .catch(() => {})
   }, [])
 
-  const loadData = async () => {
-    setLoading(true)
+  // Reset page to 1 whenever search query or branch filter changes
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, branchFilter])
+
+  // Server-side data fetching
+  const loadData = useCallback(async () => {
+    setLoadingBatches(true)
     try {
-      const res = await apiFetch('/admin/batches').catch(() => ({ data: [] }))
+      const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', '10')
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim())
+      if (branchFilter !== 'ALL') params.set('branch', branchFilter)
+
+      const res = await apiFetch(`/admin/batches?${params.toString()}`)
       setBatches(Array.isArray(res?.data) ? res.data : [])
+      if (res?.meta) {
+        setMeta(res.meta)
+      } else {
+        setMeta({
+          page: 1,
+          limit: 10,
+          total: Array.isArray(res?.data) ? res.data.length : 0,
+          total_pages: 1,
+        })
+      }
     } catch (err: any) {
       toast.error(err.message || 'Gagal memuat angkatan')
     } finally {
-      setLoading(false)
+      setLoadingBatches(false)
+      setInitialLoading(false)
     }
-  }
+  }, [page, debouncedSearch, branchFilter])
 
-  // Branches list for dropdown filter
-  const branchOptions = useMemo(() => {
-    const set = new Set<string>()
-    batches.forEach((b) => {
-      if (b.branch) set.add(b.branch)
-    })
-    return Array.from(set)
-  }, [batches])
-
-  // Filtered batches
-  const filteredBatches = useMemo(() => {
-    return batches.filter((b) => {
-      if (search.trim()) {
-        const q = search.toLowerCase()
-        const nameMatch = (b.name || '').toLowerCase().includes(q)
-        const numMatch = String(b.number || '').toLowerCase().includes(q)
-        const branchMatch = (b.branch || '').toLowerCase().includes(q)
-        if (!nameMatch && !numMatch && !branchMatch) return false
-      }
-
-      if (branchFilter !== 'ALL') {
-        if ((b.branch || '').trim() !== (branchFilter || '').trim()) return false
-      }
-
-      return true
-    })
-  }, [batches, search, branchFilter])
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const isFiltered = search.trim() !== '' || branchFilter !== 'ALL'
 
   const resetFilters = () => {
     setSearch('')
     setBranchFilter('ALL')
+    setPage(1)
   }
 
   const openCreate = () => {
@@ -143,6 +170,7 @@ export default function AdminBatchesPage() {
     try {
       await apiFetch(`/admin/batch/${confirmDel.id}`, { method: 'DELETE' })
       toast.success('Angkatan berhasil dihapus')
+      setSelectedIds((prev) => prev.filter((id) => id !== String(confirmDel.id)))
       setConfirmDel(null)
       await loadData()
     } catch (err: any) {
@@ -152,13 +180,48 @@ export default function AdminBatchesPage() {
     }
   }
 
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(batches.map((b) => String(b.id)))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const toggleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id])
+    } else {
+      setSelectedIds((prev) => prev.filter((item) => item !== id))
+    }
+  }
+
+  const isAllSelected = batches.length > 0 && batches.every((b) => selectedIds.includes(String(b.id)))
+  const isSomeSelected = batches.some((b) => selectedIds.includes(String(b.id))) && !isAllSelected
+
+  const doBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setBulkDeleting(true)
+    try {
+      await apiFetch('/admin/batches/bulk-delete', { method: 'POST', body: { ids: selectedIds } })
+      toast.success(`${selectedIds.length} angkatan berhasil dihapus`)
+      setSelectedIds([])
+      setShowBulkDel(false)
+      await loadData()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus angkatan')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   const doImport = async (_entity: string, rows: any[]) => {
     await apiFetch('/admin/batches', { method: 'POST', body: rows })
     setShowImport(false)
     await loadData()
   }
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <Card className="border-border/70">
         <CardContent className="p-6 space-y-4">
@@ -176,7 +239,7 @@ export default function AdminBatchesPage() {
           <TableToolbar
             title="Daftar Angkatan"
             desc="Kelola data nomor dan nama angkatan alumni SMA Unggulan CT Foundation."
-            count={batches.length}
+            count={meta.total}
             onCreate={openCreate}
             createLabel="Tambah Angkatan"
             onImport={() => setShowImport(true)}
@@ -191,8 +254,11 @@ export default function AdminBatchesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama atau nomor angkatan..."
-                className="pl-9"
+                className="pl-9 pr-9"
               />
+              {loadingBatches && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+              )}
             </div>
 
             <div className="w-52">
@@ -223,10 +289,25 @@ export default function AdminBatchesPage() {
             )}
           </div>
 
+          {/* BULK ACTION TOOLBAR */}
+          <BulkActionToolbar
+            selectedCount={selectedIds.length}
+            onClear={() => setSelectedIds([])}
+            onDelete={() => setShowBulkDel(true)}
+            entityLabel="angkatan"
+          />
+
           <div className="rounded-lg border border-border overflow-x-auto">
-            <Table>
+            <Table className={loadingBatches ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12 text-center">
+                    <Checkbox
+                      checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
+                      onCheckedChange={(c) => toggleSelectAll(!!c)}
+                      aria-label="Pilih semua baris di halaman ini"
+                    />
+                  </TableHead>
                   <TableHead>No.</TableHead>
                   <TableHead>Nama Angkatan</TableHead>
                   <TableHead>Cabang / Kampus</TableHead>
@@ -234,39 +315,53 @@ export default function AdminBatchesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBatches.length === 0 ? (
+                {batches.length === 0 ? (
                   <EmptyRow
-                    span={4}
+                    span={5}
                     text={
                       isFiltered
-                        ? 'Tidak ada angkatan yang cocok dengan kriteria filter.'
+                        ? 'Tidak ada angkatan yang cocok dengan kriteria pencarian/filter.'
                         : 'Belum ada data angkatan.'
                     }
                   />
                 ) : (
-                  filteredBatches.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell className="font-medium text-navy">{b.number}</TableCell>
-                      <TableCell>{b.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{b.branch}</TableCell>
-                      <TableCell>
-                        <RowActions
-                          onEdit={() => openEdit(b)}
-                          onDelete={() => setConfirmDel({ id: b.id, label: `${b.name} (No. ${b.number})` })}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  batches.map((b) => {
+                    const isSelected = selectedIds.includes(String(b.id))
+                    return (
+                      <TableRow key={b.id} data-state={isSelected ? 'selected' : undefined}>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(c) => toggleSelectRow(String(b.id), !!c)}
+                            aria-label={`Pilih ${b.name}`}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium text-navy">{b.number}</TableCell>
+                        <TableCell>{b.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{b.branch}</TableCell>
+                        <TableCell>
+                          <RowActions
+                            onEdit={() => openEdit(b)}
+                            onDelete={() => setConfirmDel({ id: b.id, label: `${b.name} (No. ${b.number})` })}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
 
-          {isFiltered && (
-            <div className="text-xs text-muted-foreground mt-3">
-              Menampilkan {filteredBatches.length} dari {batches.length} angkatan terdaftar.
-            </div>
-          )}
+          {/* TABLE PAGINATION */}
+          <TablePagination
+            page={meta.page}
+            totalPages={meta.total_pages}
+            total={meta.total}
+            limit={meta.limit}
+            onPageChange={(p) => setPage(p)}
+            disabled={loadingBatches}
+          />
         </CardContent>
       </Card>
 
@@ -327,6 +422,16 @@ export default function AdminBatchesPage() {
         deleting={deleting}
         onClose={() => setConfirmDel(null)}
         onConfirm={doDelete}
+      />
+
+      {/* CONFIRM BULK DELETE */}
+      <ConfirmBulkDeleteDialog
+        open={showBulkDel}
+        count={selectedIds.length}
+        deleting={bulkDeleting}
+        entityLabel="angkatan"
+        onClose={() => setShowBulkDel(false)}
+        onConfirm={doBulkDelete}
       />
 
       {/* IMPORT CSV DIALOG */}

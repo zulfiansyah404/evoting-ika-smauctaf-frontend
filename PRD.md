@@ -30,8 +30,11 @@
 - Memilih calon ketua dengan kartu interaktif.
 - Muncul dialog konfirmasi pemungutan suara ("Apakah Anda yakin dengan pilihan ini?").
 - Mengonfirmasi pencoblosan; aplikasi menampilkan *loading state*.
-- Menerima modal tanda terima (*vote receipt*) berisi `receipt_code` dan cap waktu.
-- Tanda terima otomatis tersimpan di `localStorage` sehingga tetap dapat dilihat jika pengguna membuka kembali halaman voting.
+- Browser meminta public key credential dengan JWT, memverifikasi certificate Ed25519 dan batch session, lalu membuat blind credential RSABSSA RFC 9474.
+- Browser mengirim blinded request ke Registry dengan JWT. Blinding state disimpan sementara agar retry jaringan memakai request identik.
+- Browser memfinalisasi credential secara lokal dan mengirim ballot ke Ballot Box tanpa JWT atau user identifier.
+- Menerima modal tanda terima berisi receipt code dan waktu penerimaan hanya setelah Ballot Box menyimpan ballot secara durable.
+- Receipt tersimpan di `localStorage` dan dapat diverifikasi melalui endpoint receipt publik. Karena ballot unlinkable, server tidak menampilkan status voting per voter pada perangkat lain.
 
 ### C. Administrator Panitia Pemilihan (Admin)
 - Login menggunakan akun dengan role `admin`.
@@ -62,8 +65,8 @@
 ### 3. Halaman Pencoblosan (`/app/vote/page.tsx`)
 - **Header Voter**: Menampilkan sapaan nama alumni, angkatan (*batch*), dan cabang sekolah (`Deli Serdang` / `Sukoharjo`).
 - **Pemeriksaan Hak Suara**:
-  - Jika sudah memilih: Menampilkan kartu tanda terima suara (*Receipt Card*) dengan tombol Salin Kode dan Unduh Bukti.
-  - Jika belum memilih: Menampilkan pilihan kandidat dalam format grid responsif.
+  - Menampilkan receipt lokal jika ada; status tersebut adalah bukti lokal, bukan lookup status voter ke database ballot.
+  - Jika belum ada receipt lokal: Menampilkan pilihan kandidat dalam format grid responsif. Server menegakkan satu credential per voter/election dan satu penggunaan per nullifier.
 - **Konfirmasi Bertingkat**: Tombol pilih memicu dialog konfirmasi untuk mencegah kesalahan klik.
 - **Umpan Balik Instan**: Menggunakan toast notifikasi via Sonner untuk status sukses maupun error dari server.
 

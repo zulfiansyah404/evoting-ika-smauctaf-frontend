@@ -12,6 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Plus, Pencil, Trash2, Loader2, Upload, FileSpreadsheet, Download,
 } from 'lucide-react'
@@ -135,6 +136,95 @@ export function ConfirmDeleteDialog({
   )
 }
 
+export function BulkActionToolbar({
+  selectedCount,
+  onClear,
+  onDelete,
+  entityLabel = 'data',
+}: {
+  selectedCount: number
+  onClear: () => void
+  onDelete: () => void
+  entityLabel?: string
+}) {
+  if (selectedCount === 0) return null
+
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 my-3 bg-navy/5 border border-navy/20 rounded-lg animate-in fade-in duration-200">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full bg-navy text-white text-xs font-semibold">
+          {selectedCount}
+        </span>
+        <span className="text-sm font-medium text-navy">
+          {entityLabel} terpilih
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground hover:text-navy"
+          onClick={onClear}
+        >
+          Batal Pilih
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="text-xs flex items-center gap-1.5"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Hapus ({selectedCount}) Terpilih
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function ConfirmBulkDeleteDialog({
+  open,
+  count,
+  deleting,
+  entityLabel = 'data',
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  count: number
+  deleting: boolean
+  entityLabel?: string
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => !deleting && !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-serif text-xl text-navy">Konfirmasi Hapus Sekaligus</DialogTitle>
+          <DialogDescription>
+            Apakah Anda yakin ingin menghapus <strong className="text-navy">{count} {entityLabel}</strong> yang dipilih? Tindakan ini tidak dapat dibatalkan.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={onClose} disabled={deleting}>
+            Batal
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={deleting}>
+            {deleting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Menghapus...
+              </>
+            ) : (
+              `Hapus ${count} ${entityLabel}`
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ---------------- CSV Importer ----------------
 export function parseCSV(text: string) {
   const clean = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
@@ -166,12 +256,12 @@ export const IMPORT_CONFIG: Record<string, any> = {
   user: {
     title: 'Impor Pengguna (CSV)',
     cols: ['name', 'email', 'password', 'id_batch', 'number'],
-    template: 'name,email,password,id_batch,number\nBudi Santoso,budi@email.com,password123,9,081200000010\nSiti Aminah,siti@email.com,password123,10,\nAgus Pratama,,password123,11,081200000012',
+    template: 'name,email,password,id_batch,number\nBudi Santoso,budi@email.com,password123,uuid-batch-angkatan,081200000010\nSiti Aminah,siti@email.com,password123,uuid-batch-angkatan,\nAgus Pratama,,password123,uuid-batch-angkatan,081200000012',
     map: (r: any) => ({
       name: (r.name || '').trim(),
       email: (r.email || '').trim(),
       password: r.password,
-      id_batch: Number(r.id_batch) || 0,
+      id_batch: (r.id_batch || '').trim() || null,
       number: String(r.number || '').trim(),
     }),
     valid: (o: any) => o.name && (o.email || o.number) && o.password,

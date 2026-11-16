@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  getSession, clearToken,
+  getSession, clearToken, UserSession,
 } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,7 +15,7 @@ import {
 const NAV = [
   { href: '/admin', label: 'Ringkasan', icon: LayoutDashboard, exact: true },
   { href: '/admin/elections', label: 'Pemilihan', icon: CalendarDays },
-  { href: '/admin/candidates', label: 'Kandidat', icon: UserSquare2 },
+  { href: '/admin/candidates', label: 'Pilihan Suara', icon: UserSquare2 },
   { href: '/admin/batches', label: 'Angkatan', icon: GraduationCap },
   { href: '/admin/users', label: 'Pengguna', icon: Users2 },
   { href: '/admin/results', label: 'Hasil Suara', icon: ListChecks },
@@ -33,12 +33,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/login')
       return
     }
-    if (s.role !== 'admin') {
+    if (s.role !== 'admin' && s.role !== 'operator') {
       router.replace('/vote')
       return
     }
+    if (s.role === 'operator' && pathname !== '/admin/users') {
+      router.replace('/admin/users')
+      return
+    }
     setSession(s)
-  }, [router])
+  }, [router, pathname])
 
   const logout = () => {
     clearToken()
@@ -53,7 +57,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  const currentNav = NAV.find((n) => n.exact ? pathname === n.href : pathname.startsWith(n.href))
+  const visibleNav = session.role === 'operator'
+    ? NAV.filter((n) => n.href === '/admin/users')
+    : NAV
+  const currentNav = visibleNav.find((n) => n.exact ? pathname === n.href : pathname.startsWith(n.href))
 
   return (
     <div className="min-h-screen bg-secondary/40 flex">
@@ -63,10 +70,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/" className="flex items-center gap-2">
             <img src="/logo.png" alt="CT ARSA Foundation & IKA" className="h-7 w-auto object-contain" />
           </Link>
-          <span className="text-[10px] uppercase tracking-wider bg-gold/15 text-gold px-2 py-0.5 rounded border border-gold/30 font-semibold">Admin</span>
+          <span className="text-[10px] uppercase tracking-wider bg-gold/15 text-gold px-2 py-0.5 rounded border border-gold/30 font-semibold">
+            {session.role === 'operator' ? 'Operator' : 'Admin'}
+          </span>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {NAV.map((n) => {
+          {visibleNav.map((n) => {
             const isActive = n.exact ? pathname === n.href : pathname.startsWith(n.href)
             return (
               <Link
@@ -80,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }`}
               >
                 <n.icon className="h-4 w-4 shrink-0" />
-                <span>{n.label}</span>
+                <span>{session.role === 'operator' && n.href === '/admin/users' ? 'Kelola Voter' : n.label}</span>
               </Link>
             )
           })}
@@ -100,14 +109,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button className="lg:hidden p-1 rounded-md hover:bg-secondary" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-6 w-6 text-navy" />
             </button>
-            <h1 className="font-serif text-xl text-navy">{currentNav?.label || 'Dashboard Admin'}</h1>
+            <h1 className="font-serif text-xl text-navy">
+              {session.role === 'operator' ? 'Manajemen Pemilih (Voter)' : (currentNav?.label || 'Dashboard Admin')}
+            </h1>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-2 text-navy font-medium">
               <ShieldCheck className="h-4 w-4 text-gold-dark" />
-              <span>{session.name || 'Administrator'}</span>
+              <span>{session.name || (session.role === 'operator' ? 'Operator Voter' : 'Administrator')}</span>
             </div>
-            <span className="text-[11px] bg-gold/15 text-gold-dark px-2 py-0.5 rounded border border-gold/30 font-medium">Admin</span>
+            <span className={`text-[11px] px-2 py-0.5 rounded border font-medium ${
+              session.role === 'operator'
+                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                : 'bg-gold/15 text-gold-dark border-gold/30'
+            }`}>
+              {session.role === 'operator' ? 'Operator Voter' : 'Admin'}
+            </span>
           </div>
         </header>
 

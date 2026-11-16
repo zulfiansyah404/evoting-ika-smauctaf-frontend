@@ -114,6 +114,27 @@ export async function apiFetch<T = any>(
   return data as T
 }
 
+export async function ballotFetch<T = any>(path: string, body: any): Promise<T> {
+  const res = await fetch(`/api/bb${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch (e) {}
+  if (!res.ok || (data && data.status === 'error')) {
+    const msg = (data && data.message) || `Terjadi kesalahan (${res.status})`
+    const err: any = new Error(msg)
+    err.status = res.status
+    err.payload = data
+    throw err
+  }
+  return data as T
+}
+
 // Receipt local storage (per election) so voter can see their receipt again
 export function saveReceipt(electionId: string | number, receipt: any): void {
   if (typeof window === 'undefined') return

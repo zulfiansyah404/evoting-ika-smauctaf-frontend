@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
 import {
   apiFetch, fmtDate, toInputDate, electionStatus, STATUS_LABEL,
 } from '@/lib/api'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -20,18 +22,28 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { CheckCircle2, Loader2, Search, X } from 'lucide-react'
+import { CheckCircle2, Loader2, Search, X, HelpCircle, MessageSquare } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   TableToolbar, RowActions, EmptyRow, Field, ConfirmDeleteDialog, statusBadge,
+  BulkActionToolbar, ConfirmBulkDeleteDialog,
 } from '@/components/admin/admin-shared'
+import { TablePagination } from '@/components/admin/table-pagination'
+import { QuestionDialog } from '@/components/admin/question-dialog'
 
 export default function AdminElectionsPage() {
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [loadingElections, setLoadingElections] = useState(false)
   const [elections, setElections] = useState<any[]>([])
 
   // Filter states
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 400)
   const [statusFilter, setStatusFilter] = useState('ALL')
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 })
 
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; values: any } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -40,52 +52,74 @@ export default function AdminElectionsPage() {
   const [confirmComplete, setConfirmComplete] = useState<any | null>(null)
   const [completing, setCompleting] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  // Question Dialog State
+  const [questionElection, setQuestionElection] = useState<any | null>(null)
 
-  const loadData = async () => {
-    setLoading(true)
+  // Bulk Selection States
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showBulkDel, setShowBulkDel] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
+  // Reset to page 1 on search or filter change
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, statusFilter])
+
+  const loadData = useCallback(async () => {
+    setLoadingElections(true)
     try {
-      const res = await apiFetch('/admin/elections').catch(() => apiFetch('/elections').catch(() => ({ data: [] })))
+      const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', '10')
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim())
+      if (statusFilter !== 'ALL') params.set('status', statusFilter)
+
+      const res = await apiFetch(`/admin/elections?${params.toString()}`).catch(() => ({ data: [] }))
       setElections(Array.isArray(res?.data) ? res.data : [])
+      if (res?.meta) {
+        setMeta(res.meta)
+      } else {
+        setMeta({
+          page: 1,
+          limit: 10,
+          total: Array.isArray(res?.data) ? res.data.length : 0,
+          total_pages: 1,
+        })
+      }
     } catch (err: any) {
       toast.error(err.message || 'Gagal memuat daftar pemilihan')
     } finally {
-      setLoading(false)
+      setLoadingElections(false)
+      setInitialLoading(false)
     }
-  }
+  }, [page, debouncedSearch, statusFilter])
 
-  // Filtered elections
-  const filteredElections = useMemo(() => {
-    return elections.filter((e) => {
-      if (search.trim()) {
-        const q = search.toLowerCase()
-        const nameMatch = (e.name || '').toLowerCase().includes(q)
-        const descMatch = (e.description || '').toLowerCase().includes(q)
-        if (!nameMatch && !descMatch) return false
-      }
-
-      if (statusFilter !== 'ALL') {
-        const st = electionStatus(e)
-        if (st !== statusFilter && e.status !== statusFilter) return false
-      }
-
-      return true
-    })
-  }, [elections, search, statusFilter])
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const isFiltered = search.trim() !== '' || statusFilter !== 'ALL'
 
   const resetFilters = () => {
     setSearch('')
     setStatusFilter('ALL')
+    setPage(1)
   }
 
   const openCreate = () => {
     setModal({
       mode: 'create',
-      values: { name: '', description: '', start_time: '', end_time: '', status: 'inactive' },
+      values: {
+        name: '',
+        question: '',
+        description: '',
+        image_url: '',
+        start_time: '',
+        end_time: '',
+        status: 'inactive',
+        enable_feedback: false,
+        feedback_prompt: '',
+      },
     })
   }
 
@@ -95,10 +129,14 @@ export default function AdminElectionsPage() {
       values: {
         id: row.id,
         name: row.name || '',
+        question: row.question || '',
         description: row.description || '',
+        image_url: row.image_url || '',
         start_time: toInputDate(row.start_time),
         end_time: toInputDate(row.end_time),
         status: row.status || 'inactive',
+        enable_feedback: !!row.enable_feedback,
+        feedback_prompt: row.feedback_prompt || '',
       },
     })
   }
@@ -153,10 +191,14 @@ export default function AdminElectionsPage() {
     try {
       const payload: any = {
         name: values.name,
+        question: values.question || values.name,
         description: values.description || '',
+        image_url: values.image_url || '',
         start_time: new Date(values.start_time).toISOString(),
         end_time: new Date(values.end_time).toISOString(),
         status: values.status || 'inactive',
+        enable_feedback: !!values.enable_feedback,
+        feedback_prompt: values.feedback_prompt || '',
       }
 
       if (mode === 'create') {
@@ -181,12 +223,48 @@ export default function AdminElectionsPage() {
     try {
       await apiFetch(`/admin/elections/${confirmDel.id}`, { method: 'DELETE' })
       toast.success('Pemilihan berhasil dihapus')
+      setSelectedIds((prev) => prev.filter((id) => id !== String(confirmDel.id)))
       setConfirmDel(null)
       await loadData()
     } catch (err: any) {
       toast.error(err.message || 'Gagal menghapus pemilihan')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(elections.map((e) => String(e.id)))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const toggleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id])
+    } else {
+      setSelectedIds((prev) => prev.filter((item) => item !== id))
+    }
+  }
+
+  const isAllSelected = elections.length > 0 && elections.every((e) => selectedIds.includes(String(e.id)))
+  const isSomeSelected = elections.some((e) => selectedIds.includes(String(e.id))) && !isAllSelected
+
+  const doBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setBulkDeleting(true)
+    try {
+      await apiFetch('/admin/elections/bulk-delete', { method: 'POST', body: { ids: selectedIds } })
+      toast.success(`${selectedIds.length} pemilihan berhasil dihapus`)
+      setSelectedIds([])
+      setShowBulkDel(false)
+      await loadData()
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus pemilihan')
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -205,7 +283,7 @@ export default function AdminElectionsPage() {
     }
   }
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <Card className="border-border/70">
         <CardContent className="p-6 space-y-4">
@@ -222,8 +300,8 @@ export default function AdminElectionsPage() {
         <CardContent className="p-6">
           <TableToolbar
             title="Daftar Pemilihan"
-            desc="Kelola agenda pemungutan suara, status pemilihan, dan periode voting."
-            count={elections.length}
+            desc="Kelola agenda pemungutan suara, pertanyaan voting, kritik & saran, dan status pemilihan."
+            count={meta.total}
             onCreate={openCreate}
             createLabel="Tambah Pemilihan"
           />
@@ -236,8 +314,11 @@ export default function AdminElectionsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama atau deskripsi pemilihan..."
-                className="pl-9"
+                className="pl-9 pr-9"
               />
+              {loadingElections && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+              )}
             </div>
 
             <div className="w-52">
@@ -268,43 +349,103 @@ export default function AdminElectionsPage() {
             )}
           </div>
 
+          {/* BULK ACTION TOOLBAR */}
+          <BulkActionToolbar
+            selectedCount={selectedIds.length}
+            onClear={() => setSelectedIds([])}
+            onDelete={() => setShowBulkDel(true)}
+            entityLabel="pemilihan"
+          />
+
           <div className="rounded-lg border border-border overflow-x-auto">
-            <Table>
+            <Table className={loadingElections ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12 text-center">
+                    <Checkbox
+                      checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
+                      onCheckedChange={(c) => toggleSelectAll(!!c)}
+                      aria-label="Pilih semua baris di halaman ini"
+                    />
+                  </TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead>Mulai</TableHead>
                   <TableHead>Selesai</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Status & Fitur</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredElections.length === 0 ? (
+                {elections.length === 0 ? (
                   <EmptyRow
-                    span={5}
+                    span={6}
                     text={
                       isFiltered
-                        ? 'Tidak ada pemilihan yang cocok dengan kriteria filter.'
+                        ? 'Tidak ada pemilihan yang cocok dengan kriteria pencarian/filter.'
                         : 'Belum ada data pemilihan.'
                     }
                   />
                 ) : (
-                  filteredElections.map((e) => {
+                  elections.map((e) => {
                     const st = electionStatus(e)
                     const isActive = e.status === 'active'
+                    const isSelected = selectedIds.includes(String(e.id))
+                    const qCount = e.questions?.length || 1
                     return (
-                      <TableRow key={e.id}>
-                        <TableCell className="font-medium text-navy">{e.name}</TableCell>
+                      <TableRow key={e.id} data-state={isSelected ? 'selected' : undefined}>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(c) => toggleSelectRow(String(e.id), !!c)}
+                            aria-label={`Pilih ${e.name}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-start gap-3">
+                            {e.image_url ? (
+                              <img
+                                src={e.image_url}
+                                alt={e.name}
+                                className="h-10 w-10 object-cover rounded-md border border-border shrink-0 mt-0.5"
+                                onError={(ev: any) => { ev.target.style.display = 'none' }}
+                              />
+                            ) : null}
+                            <div>
+                              <div className="font-semibold text-navy flex items-center gap-2">
+                                {e.name}
+                                {e.enable_feedback && (
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px]">
+                                    <MessageSquare className="h-3 w-3 mr-1" /> Feedback Aktif
+                                  </Badge>
+                                )}
+                              </div>
+                              {e.question && e.question !== e.name && (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{e.question}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm">{fmtDate(e.start_time)}</TableCell>
                         <TableCell className="text-sm">{fmtDate(e.end_time)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={statusBadge[st]}>
-                            {STATUS_LABEL[st]}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant="outline" className={statusBadge[st]}>
+                              {STATUS_LABEL[st]}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs text-navy border-navy/20 hover:bg-navy/5"
+                              onClick={() => setQuestionElection(e)}
+                            >
+                              <HelpCircle className="h-3.5 w-3.5 mr-1 text-gold-dark" />
+                              Pertanyaan ({qCount})
+                            </Button>
+
                             {isActive && (
                               <Button
                                 size="sm"
@@ -312,7 +453,7 @@ export default function AdminElectionsPage() {
                                 className="h-8 text-xs text-amber-700 border-amber-300 hover:bg-amber-50 hover:text-amber-800"
                                 onClick={() => setConfirmComplete(e)}
                               >
-                                <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-amber-600" /> Akhiri Pemilihan
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-amber-600" /> Akhiri
                               </Button>
                             )}
                             <RowActions onEdit={() => openEdit(e)} onDelete={() => setConfirmDel({ id: e.id, label: e.name })} />
@@ -326,11 +467,15 @@ export default function AdminElectionsPage() {
             </Table>
           </div>
 
-          {isFiltered && (
-            <div className="text-xs text-muted-foreground mt-3">
-              Menampilkan {filteredElections.length} dari {elections.length} pemilihan terdaftar.
-            </div>
-          )}
+          {/* TABLE PAGINATION */}
+          <TablePagination
+            page={meta.page}
+            totalPages={meta.total_pages}
+            total={meta.total}
+            limit={meta.limit}
+            onPageChange={(p) => setPage(p)}
+            disabled={loadingElections}
+          />
         </CardContent>
       </Card>
 
@@ -347,20 +492,48 @@ export default function AdminElectionsPage() {
               </DialogHeader>
 
               <div className="space-y-4 py-4">
-                <Field label="Nama Pemilihan">
+                <Field label="Judul / Nama Sesi Pemilihan">
                   <Input
                     value={modal.values.name}
                     onChange={(e) => setVal('name', e.target.value)}
                     required
-                    placeholder="Pemilihan Ketua Umum IKA SMAUCTAF"
+                    placeholder="Contoh: Pemilihan Lokasi Reuni Akbar 2026 / Pemilihan Ketua IKA"
                   />
                 </Field>
-                <Field label="Deskripsi">
+                <Field label="Pertanyaan Voting Utama (Wajib)">
+                  <Textarea
+                    value={modal.values.question}
+                    onChange={(e) => setVal('question', e.target.value)}
+                    rows={2}
+                    required
+                    placeholder="Contoh: Di manakah lokasi Reuni Akbar 1 Dekade IKA yang Anda rekomendasikan?"
+                  />
+                </Field>
+                <Field label="URL Gambar / Banner Pertanyaan (Opsional)">
+                  <Input
+                    type="url"
+                    value={modal.values.image_url}
+                    onChange={(e) => setVal('image_url', e.target.value)}
+                    placeholder="https://contoh.com/banner-reuni.jpg"
+                  />
+                  {modal.values.image_url && (
+                    <div className="mt-2 rounded-lg border border-border p-2 bg-secondary/30">
+                      <p className="text-xs text-muted-foreground mb-1">Pratinjau Gambar:</p>
+                      <img
+                        src={modal.values.image_url}
+                        alt="Preview"
+                        className="h-28 w-auto max-w-full object-contain rounded border border-border"
+                        onError={(ev: any) => { ev.target.style.display = 'none' }}
+                      />
+                    </div>
+                  )}
+                </Field>
+                <Field label="Deskripsi / Keterangan Tambahan">
                   <Textarea
                     value={modal.values.description}
                     onChange={(e) => setVal('description', e.target.value)}
-                    rows={3}
-                    placeholder="Deskripsi singkat agenda pemilihan"
+                    rows={2}
+                    placeholder="Keterangan singkat, tata cara, atau latar belakang pertimbangan usulan"
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-4">
@@ -409,6 +582,36 @@ export default function AdminElectionsPage() {
                     {modal.values.status === 'complete' && 'Pemilihan resmi ditutup dan hasil suara final dihitung.'}
                   </p>
                 </Field>
+
+                {/* TOGGLE KRITIK & SARAN (ANONIM) */}
+                <div className="pt-3 border-t border-border space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-purple-200 bg-purple-50/50">
+                    <div className="space-y-0.5 pr-2">
+                      <Label htmlFor="fb-toggle" className="text-sm font-semibold text-purple-950 flex items-center gap-1.5 cursor-pointer">
+                        <MessageSquare className="h-4 w-4 text-purple-700" />
+                        Buka Kolom Kritik & Saran (100% Anonim)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Jika diaktifkan, pemilih akan diberikan formulir saran dan kritik setelah menjawab seluruh pertanyaan.
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="fb-toggle"
+                      checked={!!modal.values.enable_feedback}
+                      onCheckedChange={(c) => setVal('enable_feedback', !!c)}
+                    />
+                  </div>
+
+                  {modal.values.enable_feedback && (
+                    <Field label="Petunjuk / Teks Pengantar Kritik & Saran">
+                      <Input
+                        value={modal.values.feedback_prompt || ''}
+                        onChange={(e) => setVal('feedback_prompt', e.target.value)}
+                        placeholder="Contoh: Silakan berikan masukan Anda untuk kemajuan IKA..."
+                      />
+                    </Field>
+                  )}
+                </div>
               </div>
 
               <DialogFooter className="gap-2 sm:gap-0">
@@ -422,12 +625,30 @@ export default function AdminElectionsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* QUESTION BUILDER DIALOG */}
+      <QuestionDialog
+        election={questionElection}
+        open={!!questionElection}
+        onClose={() => setQuestionElection(null)}
+        onChanged={loadData}
+      />
+
       {/* CONFIRM DELETE DIALOG */}
       <ConfirmDeleteDialog
         target={confirmDel}
         deleting={deleting}
         onClose={() => setConfirmDel(null)}
         onConfirm={doDelete}
+      />
+
+      {/* CONFIRM BULK DELETE DIALOG */}
+      <ConfirmBulkDeleteDialog
+        open={showBulkDel}
+        count={selectedIds.length}
+        deleting={bulkDeleting}
+        entityLabel="pemilihan"
+        onClose={() => setShowBulkDel(false)}
+        onConfirm={doBulkDelete}
       />
 
       {/* DIALOG AKHIRI PEMILIHAN */}
@@ -452,4 +673,3 @@ export default function AdminElectionsPage() {
     </div>
   )
 }
-

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 const EXTERNAL = process.env.EVOTING_API_URL
+const BALLOT_BOX = process.env.EVOTING_BALLOTBOX_URL
 
 function cors(res) {
   res.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
@@ -18,6 +19,37 @@ async function handler(request, { params }) {
   const method = request.method
 
   try {
+    if (path[0] === 'bb') {
+      if (!BALLOT_BOX) {
+        return cors(
+          NextResponse.json(
+            { status: 'error', message: 'EVOTING_BALLOTBOX_URL belum dikonfigurasi' },
+            { status: 500 }
+          )
+        )
+      }
+      const targetPath = '/' + path.slice(1).join('/')
+      const url = new URL(request.url)
+      const target = BALLOT_BOX + targetPath + (url.search || '')
+      const headers = {}
+      let body
+      if (method !== 'GET' && method !== 'DELETE' && method !== 'HEAD') {
+        const txt = await request.text()
+        if (txt) {
+          body = txt
+          headers['Content-Type'] = request.headers.get('content-type') || 'application/json'
+        }
+      }
+      const resp = await fetch(target, { method, headers, body, cache: 'no-store' })
+      const text = await resp.text()
+      return cors(
+        new NextResponse(text, {
+          status: resp.status,
+          headers: { 'Content-Type': resp.headers.get('content-type') || 'application/json' },
+        })
+      )
+    }
+
     // Proxy everything under /api/be/* to the external e-voting REST API
     if (path[0] === 'be') {
       if (!EXTERNAL) {

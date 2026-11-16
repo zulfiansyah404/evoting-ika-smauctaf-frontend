@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const s = getSession()
-    if (s) router.replace(s.role === 'admin' ? '/admin' : '/vote')
+    if (s) router.replace(s.role === 'admin' ? '/admin' : (s.role === 'operator' ? '/admin/users' : '/vote'))
   }, [router])
 
   const submit = async (e: React.FormEvent) => {
@@ -35,7 +35,7 @@ export default function LoginPage() {
       setToken(token)
       const d = decodeToken(token)
       toast.success('Login berhasil')
-      router.replace(d?.role === 'admin' ? '/admin' : '/vote')
+      router.replace(d?.role === 'admin' ? '/admin' : (d?.role === 'operator' ? '/admin/users' : '/vote'))
     } catch (err: any) {
       toast.error(err.message || 'Login gagal')
     } finally {

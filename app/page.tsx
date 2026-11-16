@@ -167,7 +167,26 @@ export default function LandingPage() {
                       <h3 className="font-serif text-xl text-navy">{e.name}</h3>
                       <Badge variant="outline" className={statusStyle[st]}>{STATUS_LABEL[st]}</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-5 line-clamp-2">{e.description || 'Pemilihan Ketua Ikatan Alumni.'}</p>
+
+                    {e.question && (
+                      <div className="mb-3 text-sm text-navy/90 font-medium bg-secondary/50 p-2.5 rounded-lg border border-border/60">
+                        <span className="text-xs text-gold-dark uppercase tracking-wide font-bold block mb-0.5">Pertanyaan:</span>
+                        {e.question}
+                      </div>
+                    )}
+
+                    {e.image_url && (
+                      <div className="mb-4 rounded-lg overflow-hidden border border-border bg-secondary/20 p-1">
+                        <img
+                          src={e.image_url}
+                          alt={e.name}
+                          className="w-full h-36 object-contain rounded"
+                          onError={(ev: any) => { ev.target.style.display = 'none' }}
+                        />
+                      </div>
+                    )}
+
+                    <p className="text-sm text-muted-foreground mb-5 line-clamp-2">{e.description || 'Sesi pemungutan suara resmi IKA SMAUCTAF.'}</p>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="text-muted-foreground text-xs mb-0.5">Mulai</div>
@@ -193,43 +212,55 @@ export default function LandingPage() {
         )}
       </section>
 
-      {/* KANDIDAT */}
+      {/* KANDIDAT & OPSI */}
       <section id="kandidat" className="bg-secondary/50 border-y border-border/60">
         <div className="container py-20">
-          <SectionHead eyebrow="Para Calon" title="Kandidat Ketua Alumni" subtitle="Kenali visi dan misi setiap kandidat sebelum menentukan pilihan Anda." />
+          <SectionHead eyebrow="Pilihan Suara" title="Opsi &amp; Kandidat Terdaftar" subtitle="Pelajari usulan keputusan atau profil calon sebelum menentukan pilihan Anda." />
           {loading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-64" />)}
             </div>
           ) : candidates.length === 0 ? (
-            <EmptyState icon={Users} text="Daftar kandidat belum tersedia. Kandidat akan ditampilkan setelah ditetapkan oleh panitia." />
+            <EmptyState icon={Users} text="Daftar opsi atau kandidat belum tersedia saat ini." />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {candidates.map((c) => (
-                <Card key={c.id} className="group border-border/70 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4 mb-5">
-                      <div className="h-16 w-16 rounded-full bg-navy text-gold flex items-center justify-center font-serif text-xl border-2 border-gold/40">
-                        {(c.initials || c.user_name || '?').toString().slice(0, 2).toUpperCase()}
+              {candidates.map((c, idx) => {
+                const label = c.label || c.name || c.user_name || 'Pilihan'
+                return (
+                  <Card key={c.id} className="group border-border/70 hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col justify-between">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4 mb-4">
+                        {c.image_url ? (
+                          <img
+                            src={c.image_url}
+                            alt={label}
+                            className="h-16 w-16 rounded-xl object-cover border-2 border-gold/40 shrink-0"
+                            onError={(ev: any) => { ev.target.style.display = 'none' }}
+                          />
+                        ) : (
+                          <div className="h-14 w-14 rounded-xl bg-navy text-gold flex items-center justify-center font-serif text-lg font-bold border-2 border-gold/40 shrink-0">
+                            {c.order_number || idx + 1}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-[11px] uppercase tracking-wider text-gold-dark font-bold">
+                            Opsi {c.order_number || idx + 1}
+                          </div>
+                          <h3 className="font-serif text-lg text-navy font-bold truncate">{label}</h3>
+                          {c.user_name && c.user_name !== label && (
+                            <div className="text-xs text-muted-foreground">({c.user_name})</div>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[11px] uppercase tracking-wider text-gold-dark font-semibold">Kandidat</div>
-                        <h3 className="font-serif text-lg text-navy truncate">{c.user_name || c.initials}</h3>
-                        {c.batch_name && <div className="text-xs text-muted-foreground">Angkatan {c.batch_name}</div>}
+                      <div className="space-y-2 text-sm">
+                        <p className="text-muted-foreground line-clamp-3">
+                          {c.description || c.vision || 'Pilihan suara untuk sesi voting.'}
+                        </p>
                       </div>
-                    </div>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-navy mb-1"><Target className="h-3.5 w-3.5 text-gold-dark" /> Visi</div>
-                        <p className="text-muted-foreground line-clamp-2">{c.vision || '-'}</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" className="mt-4 px-0 text-navy hover:text-gold-dark hover:bg-transparent" onClick={() => setDetail(c)}>
-                      Lihat Visi &amp; Misi <ArrowRight className="ml-1.5 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
           <div className="mt-12 text-center">

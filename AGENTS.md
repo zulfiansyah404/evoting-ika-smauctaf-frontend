@@ -39,7 +39,8 @@ Frontend web application untuk sistem pemilihan umum online Ikatan Alumni SMA Un
 ## 3. Konvensi Kode & Standar Pengembangan
 
 ### A. Komunikasi API ke Backend
-- Seluruh panggilan API ke backend REST diarahkan melalui proxy Next.js internal (contoh: `/api/be/*`) atau menggunakan helper [lib/api.ts](file:///home/zoel/workspaces/evoting-ika-smauctaf/evoting-ika-smauctaf-frontend/lib/api.ts) (`apiFetch`).
+- Panggilan Registry memakai `/api/be/*` dan `apiFetch`; Ballot Box memakai `/api/bb/*`.
+- **Jangan pernah mengirim JWT, `user_id`, email, atau nomor HP ke `POST /api/bb/ballots`.** Gunakan `ballotFetch` tanpa Authorization.
 - **Autentikasi**: Token JWT disimpan di `localStorage` dengan key `evoting_token` dan diekstrak via helper `getToken()`, `setToken()`, `clearToken()`, dan `getSession()`.
 - Selalu sesuaikan payload request dan struktur response dengan backend standard format (`status`, `code`, `message`, `data`, `errors`).
 
@@ -50,8 +51,12 @@ Frontend web application untuk sistem pemilihan umum online Ikatan Alumni SMA Un
 - Berikan feedback interaksi yang jelas kepada pengguna (loading skeleton, disabled state pada tombol saat submit, dan feedback toast via `sonner`).
 
 ### C. Alur Voting & Keamanan
-- Halaman voting harus memvalidasi status pemilihan (aktif/belum dimulai/berakhir) dan status hak suara pengguna sebelum mengizinkan pengiriman suara (*ballot*).
-- Simpan bukti / receipt vote di `localStorage` menggunakan `evoting_receipts` untuk verifikasi pengguna setelah berhasil melakukan vote.
+- Gunakan `@cloudflare/blindrsa-ts` RSABSSA randomized melalui `lib/blind-vote.ts`; jangan menulis primitive kriptografi sendiri.
+- Verifikasi Ed25519 certificate terhadap `NEXT_PUBLIC_CREDENTIAL_DIRECTORY_PUBLIC_KEY` dan pastikan election/batch sama dengan session sebelum blind signing.
+- Simpan pending blinded state ke localStorage **sebelum** meminta signature agar retry memakai blinded request yang sama; larang perubahan candidate selama ballot pending.
+- Finalize dan verifikasi blind signature di browser, kemudian kirim hanya certificate, prepared message, credential signature, dan candidate ID ke Ballot Box tanpa JWT.
+- Receipt diberikan hanya setelah Ballot Box menjawab HTTP 201 durable. Simpan receipt di `evoting_receipts` dan bersihkan pending state setelah berhasil.
+- Jangan menganggap local receipt sebagai status voter global; server tidak dapat menautkan ballot anonim kembali ke voter.
 
 ---
 
@@ -60,14 +65,15 @@ Frontend web application untuk sistem pemilihan umum online Ikatan Alumni SMA Un
 | Perintah | Deskripsi |
 | :--- | :--- |
 | `yarn dev` atau `npm run dev` | Menjalankan Next.js development server (port 3000) |
-| `yarn build` atau `npm run build` | Menjalankan build production & type-checking TypeScript |
+| `yarn build` atau `npm run build` | Menjalankan build production (konfigurasi saat ini melewati type validation) |
+| `npx tsc --noEmit` | Type-check frontend; perbaiki diagnostic baru pada file yang disentuh dan catat baseline existing |
 | `yarn start` atau `npm run start` | Menjalankan server Next.js production |
 
 ---
 
 ## 5. Instruksi Khusus untuk AI Agent Saat Melakukan Task
 1. **Verifikasi Tipe Data**:
-   - Selalu periksa tipe data TypeScript di `lib/` atau komponen terkait agar tidak terjadi error kompilasi saat `yarn build`.
+   - Periksa diagnostic TypeScript pada helper/komponen yang disentuh; `next.config.js` mengatur `ignoreBuildErrors: true`, jadi build tidak menjadi type-check gate.
 2. **Konsistensi UI/UX**:
    - Pertahankan tema warna gold/navy khas IKA SMAUCTAF dan tipografi (Inter & Playfair Display).
    - Pastikan layout responsif (mobile-first dan desktop friendly).

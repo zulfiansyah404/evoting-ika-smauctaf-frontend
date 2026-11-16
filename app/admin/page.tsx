@@ -20,6 +20,7 @@ export default function AdminOverviewPage() {
   const [elections, setElections] = useState<any[]>([])
   const [candidates, setCandidates] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [ballots, setBallots] = useState<any[]>([])
 
   useEffect(() => {
@@ -32,12 +33,13 @@ export default function AdminOverviewPage() {
       const [el, ca, us, bl] = await Promise.all([
         apiFetch('/admin/elections').catch(() => apiFetch('/elections').catch(() => ({ data: [] }))),
         apiFetch('/candidates').catch(() => ({ data: [] })),
-        apiFetch('/admin/users').catch(() => ({ data: [] })),
+        apiFetch('/admin/users?limit=1').catch(() => ({ data: [] })),
         apiFetch('/admin/ballots').catch(() => ({ data: [] })),
       ])
       setElections(Array.isArray(el?.data) ? el.data : [])
       setCandidates(Array.isArray(ca?.data) ? ca.data : [])
       setUsers(Array.isArray(us?.data) ? us.data : [])
+      setTotalUsers(us?.meta?.total ?? (Array.isArray(us?.data) ? us.data.length : 0))
       setBallots(Array.isArray(bl?.data) ? bl.data : [])
     } catch (e: any) {
       toast.error(e.message || 'Gagal memuat ringkasan')
@@ -48,8 +50,8 @@ export default function AdminOverviewPage() {
 
   const stats = [
     { label: 'Total Pemilihan', value: elections.length, icon: CalendarDays, href: '/admin/elections' },
-    { label: 'Total Kandidat', value: candidates.length, icon: UserSquare2, href: '/admin/candidates' },
-    { label: 'Total Pengguna', value: users.length, icon: Users2, href: '/admin/users' },
+    { label: 'Pilihan Suara', value: candidates.length, icon: UserSquare2, href: '/admin/candidates' },
+    { label: 'Total Pengguna', value: totalUsers, icon: Users2, href: '/admin/users' },
     { label: 'Suara Masuk', value: ballots.length, icon: Vote, href: '/admin/results' },
   ]
 
@@ -58,7 +60,7 @@ export default function AdminOverviewPage() {
     const counts: Record<string, number> = {}
     ballots.forEach((b) => { counts[b.candidate_id] = (counts[b.candidate_id] || 0) + 1 })
     return candidates.map((c) => ({
-      name: c.user_name || c.initials || `#${c.id}`,
+      name: c.label || c.name || c.user_name || c.initials || `#${c.id}`,
       suara: counts[c.id] || 0,
     }))
   }, [ballots, candidates])
