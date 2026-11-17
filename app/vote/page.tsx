@@ -42,6 +42,7 @@ export default function VotePage() {
   const [elections, setElections] = useState<any[]>([])
   const [candidates, setCandidates] = useState<any[]>([])
   const [receipts, setReceipts] = useState<Record<string, any>>({})
+  const [votedElectionIds, setVotedElectionIds] = useState<Record<string, boolean>>({})
 
   // Active voting state
   const [selectedElection, setSelectedElection] = useState<any>(null)
@@ -76,12 +77,20 @@ export default function VotePage() {
   const load = async () => {
     setLoading(true)
     try {
-      const [el, ca] = await Promise.all([
+      const [el, ca, votedRes] = await Promise.all([
         apiFetch('/elections'),
         apiFetch('/candidates').catch(() => ({ data: [] })),
+        apiFetch('/me/voted-elections').catch(() => ({ data: [] })),
       ])
       setElections(Array.isArray(el?.data) ? el.data : [])
       setCandidates(Array.isArray(ca?.data) ? ca.data : [])
+      const votedMap: Record<string, boolean> = {}
+      if (Array.isArray(votedRes?.data)) {
+        for (const id of votedRes.data) {
+          if (id) votedMap[String(id)] = true
+        }
+      }
+      setVotedElectionIds(votedMap)
     } catch (e: any) {
       toast.error(e.message || 'Gagal memuat data')
     } finally {
@@ -128,6 +137,10 @@ export default function VotePage() {
 
   // Open Bilik Suara for an election
   const enterBooth = async (e: any) => {
+    if (receipts[e.id] || votedElectionIds[e.id]) {
+      toast.info('Anda sudah melakukan voting pada pemilihan ini')
+      return
+    }
     setSelectedElection(e)
     setLoadingQuestions(true)
     setActiveStep(0)
@@ -264,6 +277,7 @@ export default function VotePage() {
       })
 
       setReceipts(getReceipts())
+      setVotedElectionIds((prev) => ({ ...prev, [String(selectedElection.id)]: true }))
       setConfirmOpen(false)
       setSuccessReceipt(receipt)
       toast.success('Seluruh pilihan suara Anda berhasil direkam secara aman')
@@ -413,6 +427,7 @@ export default function VotePage() {
                 {elections.map((e) => {
                   const st = electionStatus(e)
                   const voted = receipts[e.id]
+                  const hasVoted = Boolean(voted || votedElectionIds[e.id])
                   const qCount = e.questions?.length || 1
 
                   return (
@@ -462,14 +477,16 @@ export default function VotePage() {
                       </div>
 
                       <div className="px-6 pb-6">
-                        {voted ? (
+                        {hasVoted ? (
                           <div>
                             <Button disabled className="w-full bg-emerald-600 hover:bg-emerald-600 text-white opacity-90">
                               <CheckCircle className="h-4 w-4 mr-2" /> Anda Sudah Memilih
                             </Button>
-                            <p className="mt-2 text-xs text-center text-muted-foreground">
-                              Receipt: <button onClick={() => copyReceipt(voted.code)} className="font-mono text-gold-dark hover:underline font-semibold">{voted.code}</button>
-                            </p>
+                            {voted?.code && (
+                              <p className="mt-2 text-xs text-center text-muted-foreground">
+                                Receipt: <button onClick={() => copyReceipt(voted.code)} className="font-mono text-gold-dark hover:underline font-semibold">{voted.code}</button>
+                              </p>
+                            )}
                           </div>
                         ) : st === 'active' ? (
                           <Button className="w-full bg-navy hover:bg-navy-light text-white" onClick={() => enterBooth(e)}>
