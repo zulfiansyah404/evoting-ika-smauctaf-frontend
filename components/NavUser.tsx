@@ -1,17 +1,24 @@
 'use client'
 
+import type { ComponentType } from 'react'
 import { ChevronsUpDown, GraduationCap, KeyRound, LogOut } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar as RawAvatar, AvatarFallback as RawAvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuContent as RawDropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuItem as RawDropdownMenuItem,
+  DropdownMenuLabel as RawDropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+
+const Avatar = RawAvatar as ComponentType<any>
+const AvatarFallback = RawAvatarFallback as ComponentType<any>
+const DropdownMenuContent = RawDropdownMenuContent as ComponentType<any>
+const DropdownMenuItem = RawDropdownMenuItem as ComponentType<any>
+const DropdownMenuLabel = RawDropdownMenuLabel as ComponentType<any>
 
 export interface NavUserProps {
   user: {

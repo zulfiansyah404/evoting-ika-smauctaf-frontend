@@ -19,11 +19,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import {
-  Vote, LogOut, CheckCircle2, Loader2, ShieldCheck, Copy,
+  Vote, CheckCircle2, Loader2, ShieldCheck, Copy,
   CalendarClock, ArrowLeft, CheckCircle, Download, Timer, GraduationCap, Check,
   MessageSquare, ChevronRight, ChevronLeft, AlertCircle, HelpCircle, KeyRound,
 } from 'lucide-react'
 import Countdown from '@/components/Countdown'
+import { NavUser } from '@/components/NavUser'
 
 const statusStyle = {
   active: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -373,26 +374,16 @@ export default function VotePage() {
             <span className="hidden sm:inline-block h-5 w-px bg-white/20" />
             <span className="hidden sm:inline-block text-xs uppercase tracking-wider text-gold/90 font-medium">Bilik Suara</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-semibold text-white leading-tight">{session.name || 'Pemilih'}</div>
-              {session.batchName ? (
-                <div className="text-[11px] text-gold/90 flex items-center justify-end gap-1 font-medium mt-0.5">
-                  <GraduationCap className="h-3 w-3" />
-                  <span>{session.batchNumber ? `Angkatan ${session.batchNumber} - ` : ''}{session.batchName}{session.batchBranch ? ` (${session.batchBranch})` : ''}</span>
-                </div>
-              ) : (
-                <div className="text-[11px] text-white/60">Pemilih Terverifikasi</div>
-              )}
-            </div>
-            <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10" onClick={() => setPwdOpen(true)}>
-              <KeyRound className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Ubah Password</span>
-            </Button>
-            <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10" onClick={logout}>
-              <LogOut className="h-4 w-4 mr-2" /> Keluar
-            </Button>
-          </div>
+          <NavUser
+            user={{
+              name: session.name || 'Pemilih',
+              batchLabel: session.batchName
+                ? `${session.batchNumber ? `Angkatan ${session.batchNumber} - ` : ''}${session.batchName}${session.batchBranch ? ` (${session.batchBranch})` : ''}`
+                : undefined,
+            }}
+            onChangePassword={() => setPwdOpen(true)}
+            onLogout={logout}
+          />
         </div>
       </header>
 
