@@ -4,7 +4,7 @@ import { posix as posixPath } from 'path'
 const EXTERNAL = process.env.EVOTING_API_URL
 const BALLOT_BOX = process.env.EVOTING_BALLOTBOX_URL
 
-const ALLOWED_BE_PREFIXES = ['/login', '/candidates', '/elections', '/batches', '/ballots', '/admin']
+const ALLOWED_BE_PREFIXES = ['/login', '/me', '/candidates', '/elections', '/batches', '/ballots', '/admin']
 const ALLOWED_BB_PREFIXES = ['/ballots', '/health', '/elections', '/results', '/verify']
 
 function cors(res, request) {

@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -19,7 +21,7 @@ import {
 import {
   Vote, LogOut, CheckCircle2, Loader2, ShieldCheck, Copy,
   CalendarClock, ArrowLeft, CheckCircle, Download, Timer, GraduationCap, Check,
-  MessageSquare, ChevronRight, ChevronLeft, AlertCircle, HelpCircle,
+  MessageSquare, ChevronRight, ChevronLeft, AlertCircle, HelpCircle, KeyRound,
 } from 'lucide-react'
 import Countdown from '@/components/Countdown'
 
@@ -52,6 +54,13 @@ export default function VotePage() {
   const [submitting, setSubmitting] = useState(false)
   const [successReceipt, setSuccessReceipt] = useState<any>(null)
 
+  // Change password modal state
+  const [pwdOpen, setPwdOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPwd, setChangingPwd] = useState(false)
+
   useEffect(() => {
     const s = getSession()
     if (!s) {
@@ -82,6 +91,38 @@ export default function VotePage() {
   const logout = () => {
     clearToken()
     router.replace('/login')
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentPassword || !newPassword) {
+      toast.error('Kata sandi saat ini dan kata sandi baru wajib diisi')
+      return
+    }
+    if (newPassword.length < 8) {
+      toast.error('Kata sandi baru minimal 8 karakter')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Konfirmasi kata sandi baru tidak cocok')
+      return
+    }
+    setChangingPwd(true)
+    try {
+      await apiFetch('/me/password', {
+        method: 'PUT',
+        body: { current_password: currentPassword, new_password: newPassword },
+      })
+      toast.success('Kata sandi berhasil diperbarui')
+      setPwdOpen(false)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal memperbarui kata sandi')
+    } finally {
+      setChangingPwd(false)
+    }
   }
 
   // Open Bilik Suara for an election
@@ -344,6 +385,10 @@ export default function VotePage() {
                 <div className="text-[11px] text-white/60">Pemilih Terverifikasi</div>
               )}
             </div>
+            <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10" onClick={() => setPwdOpen(true)}>
+              <KeyRound className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Ubah Password</span>
+            </Button>
             <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10" onClick={logout}>
               <LogOut className="h-4 w-4 mr-2" /> Keluar
             </Button>
@@ -924,6 +969,77 @@ export default function VotePage() {
               Kembali ke Daftar Voting
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* CHANGE PASSWORD DIALOG */}
+      <Dialog
+        open={pwdOpen}
+        onOpenChange={(open) => {
+          if (!changingPwd) {
+            setPwdOpen(open)
+            if (!open) {
+              setCurrentPassword('')
+              setNewPassword('')
+              setConfirmPassword('')
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl text-navy flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-gold-dark" /> Ubah Kata Sandi
+            </DialogTitle>
+            <DialogDescription>
+              Perbarui kata sandi akun Anda. Kata sandi baru minimal 8 karakter.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="current-password">Kata Sandi Saat Ini</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-password">Kata Sandi Baru</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Konfirmasi Kata Sandi Baru</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                minLength={8}
+                required
+                className="mt-1"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+              <Button type="button" variant="outline" onClick={() => setPwdOpen(false)} disabled={changingPwd}>
+                Batal
+              </Button>
+              <Button type="submit" className="bg-navy hover:bg-navy-light text-white" disabled={changingPwd}>
+                {changingPwd ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Menyimpan...</> : 'Simpan Kata Sandi'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
