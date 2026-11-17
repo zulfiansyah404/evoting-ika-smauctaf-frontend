@@ -44,23 +44,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
+    <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
       {/* Left brand panel */}
       <div className="relative hidden lg:flex flex-col justify-between bg-navy text-white p-12 overflow-hidden">
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, #c9a86a 0, transparent 40%), radial-gradient(circle at 80% 80%, #243149 0, transparent 45%)' }} />
-        <Link href="/" className="relative z-10 inline-flex items-center gap-2 text-gold hover:text-gold-light transition">
+        <Link href="/" className="relative z-10 inline-flex items-center gap-2 text-gold hover:text-gold-light transition-colors">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Beranda
         </Link>
         <div className="relative z-10">
           <div className="mb-8">
             <img src="/logo.png" alt="CT ARSA Foundation & IKA" className="h-12 w-auto object-contain" />
-            <div className="mt-2 text-[11px] uppercase tracking-[0.2em] text-gold/80 font-medium">Sistem E-Voting Resmi</div>
+            <div className="mt-3 text-sm text-gold font-medium">Sistem E-Voting Resmi IKA SMAU CT ARSA</div>
           </div>
           <h1 className="font-serif text-4xl leading-tight mb-4">Suara Anda,<br />Masa Depan Alumni.</h1>
-          <p className="text-white/70 max-w-md">Masuk untuk memberikan suara pada Pemilihan Ketua Ikatan Alumni SMA Unggulan CT ARSA Foundation secara aman dan transparan.</p>
+          <p className="text-white/75 max-w-md">Masuk untuk memberikan suara pada Pemilihan Ketua Ikatan Alumni SMA Unggulan CT ARSA Foundation secara aman dan transparan.</p>
         </div>
-        <div className="relative z-10 flex items-center gap-2 text-sm text-white/60">
-          <ShieldCheck className="h-4 w-4 text-gold" /> Terenkripsi & Rahasia
+        <div className="relative z-10 flex items-center gap-2 text-sm text-white/70">
+          <ShieldCheck className="h-4 w-4 text-gold" /> Terenkripsi &amp; Rahasia
         </div>
       </div>
 

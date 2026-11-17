@@ -104,7 +104,7 @@ export default function AdminCandidatesPage() {
       if (electionFilter !== 'ALL') params.set('election_id', electionFilter)
       if (questionFilter !== 'ALL') params.set('question_id', questionFilter)
 
-      const cRes = await apiFetch(`/candidates?${params.toString()}`).catch(() => ({ data: [] }))
+      const cRes = await apiFetch(`/admin/candidates?${params.toString()}`).catch(() => ({ data: [] }))
       setCandidates(Array.isArray(cRes?.data) ? cRes.data : [])
 
       if (cRes?.meta) {

@@ -255,16 +255,16 @@ export function parseCSV(text: string) {
 export const IMPORT_CONFIG: Record<string, any> = {
   user: {
     title: 'Impor Pengguna (CSV)',
-    cols: ['name', 'email', 'password', 'id_batch', 'number'],
-    template: 'name,email,password,id_batch,number\nBudi Santoso,budi@email.com,password123,uuid-batch-angkatan,081200000010\nSiti Aminah,siti@email.com,password123,uuid-batch-angkatan,\nAgus Pratama,,password123,uuid-batch-angkatan,081200000012',
+    cols: ['name', 'email', 'password', 'name_batch', 'number'],
+    template: 'name,email,password,name_batch,number\nBudi Santoso,budi@email.com,password123,Angsa,081200000010\nSiti Aminah,siti@email.com,password123,Angkasa,\nAgus Pratama,,password123,Gentacakra,081200000012',
     map: (r: any) => ({
       name: (r.name || '').trim(),
       email: (r.email || '').trim(),
       password: r.password,
-      id_batch: (r.id_batch || '').trim() || null,
+      name_batch: (r.name_batch || '').trim() || null,
       number: String(r.number || '').trim(),
     }),
-    valid: (o: any) => o.name && (o.email || o.number) && o.password,
+    valid: (o: any) => o.name && (o.email || o.number) && o.password && o.name_batch,
   },
   batch: {
     title: 'Impor Angkatan (CSV)',

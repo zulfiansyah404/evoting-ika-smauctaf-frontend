@@ -32,7 +32,7 @@ export default function AdminOverviewPage() {
     try {
       const [el, ca, us, bl] = await Promise.all([
         apiFetch('/admin/elections').catch(() => apiFetch('/elections').catch(() => ({ data: [] }))),
-        apiFetch('/candidates').catch(() => ({ data: [] })),
+        apiFetch('/admin/candidates').catch(() => ({ data: [] })),
         apiFetch('/admin/users?limit=1').catch(() => ({ data: [] })),
         apiFetch('/admin/ballots').catch(() => ({ data: [] })),
       ])

@@ -48,7 +48,7 @@ export default function AdminResultsPage() {
     try {
       const [eRes, cRes, bRes, batchRes] = await Promise.all([
         apiFetch('/admin/elections').catch(() => apiFetch('/elections').catch(() => ({ data: [] }))),
-        apiFetch('/candidates').catch(() => ({ data: [] })),
+        apiFetch('/admin/candidates').catch(() => ({ data: [] })),
         apiFetch('/admin/ballots').catch(() => ({ data: [] })),
         apiFetch('/admin/batches').catch(() => ({ data: [] })),
       ])

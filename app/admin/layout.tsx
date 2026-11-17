@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-secondary/40 flex items-center justify-center">
+      <div className="min-h-dvh bg-secondary/40 flex items-center justify-center">
         <div className="h-8 w-8 rounded-full border-2 border-navy border-t-transparent animate-spin" />
       </div>
     )
@@ -63,10 +63,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const currentNav = visibleNav.find((n) => n.exact ? pathname === n.href : pathname.startsWith(n.href))
 
   return (
-    <div className="min-h-screen bg-secondary/40 flex">
+    <div className="min-h-dvh bg-secondary/40 flex">
       {/* SIDEBAR (Sticky locked to viewport on desktop) */}
-      <aside className={`fixed lg:sticky top-0 h-screen shrink-0 z-50 inset-y-0 left-0 w-64 bg-navy text-white flex flex-col transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+      <aside className={`fixed lg:sticky top-0 h-dvh shrink-0 z-50 inset-y-0 left-0 w-64 bg-navy text-white flex flex-col transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="h-16 flex items-center justify-between px-4 bg-navy-dark shrink-0">
           <Link href="/" className="flex items-center gap-2">
             <img src="/logo.png" alt="CT ARSA Foundation & IKA" className="h-7 w-auto object-contain" />
           </Link>
@@ -94,7 +94,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
           })}
         </nav>
-        <div className="p-3 border-t border-white/10 shrink-0">
+        <div className="p-3 bg-navy-dark shrink-0">
           <Button variant="ghost" className="w-full justify-start text-white/75 hover:text-white hover:bg-white/10" onClick={logout}>
             <LogOut className="h-4 w-4 mr-2" /> Keluar
           </Button>
@@ -103,10 +103,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
+      <div className="flex-1 min-w-0 flex flex-col min-h-dvh">
+        <header className="h-16 bg-card flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
           <div className="flex items-center gap-3">
-            <button className="lg:hidden p-1 rounded-md hover:bg-secondary" onClick={() => setSidebarOpen(true)}>
+            <button
+              type="button"
+              aria-label="Buka menu navigasi"
+              className="lg:hidden p-1 rounded-md hover:bg-secondary"
+              onClick={() => setSidebarOpen(true)}
+            >
               <Menu className="h-6 w-6 text-navy" />
             </button>
             <h1 className="font-serif text-xl text-navy">
