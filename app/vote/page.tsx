@@ -440,14 +440,6 @@ export default function VotePage() {
                             <Badge variant="outline" className={statusStyle[st]}>{STATUS_LABEL[st]}</Badge>
                           </div>
 
-                          {/* Pertanyaan preview */}
-                          {e.question && (
-                            <div className="mb-3 text-sm text-navy/90 font-medium bg-secondary/50 p-2.5 rounded-lg border border-border/60">
-                              <span className="text-xs text-gold-dark uppercase tracking-wide font-bold block mb-0.5">Pertanyaan Utama:</span>
-                              {e.question}
-                            </div>
-                          )}
-
                           {e.description && (
                             <p className="text-xs text-muted-foreground mb-4 line-clamp-2">{e.description}</p>
                           )}
