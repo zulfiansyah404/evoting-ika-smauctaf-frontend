@@ -459,9 +459,9 @@ export default function VotePage() {
                             {e.enable_feedback && (
                               <>
                                 <span>•</span>
-                                <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                {/* <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                   <MessageSquare className="h-3 w-3" /> Ada Kotak Aspirasi
-                                </span>
+                                </span> */}
                               </>
                             )}
                           </div>
